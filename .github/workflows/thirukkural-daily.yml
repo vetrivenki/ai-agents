@@ -1,0 +1,40 @@
+name: Daily Thirukkural Video
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 13 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  create-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install dependencies
+        run: pip install -r thirukkural-video-agent/requirements.txt
+      - name: Create and upload video
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_PRIVACY_STATUS: private
+        run: |
+          cd thirukkural-video-agent
+          python main.py
+      - name: Commit publishing state
+        run: |
+          git config user.name "thirukkural-video-agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add thirukkural-video-agent/state.json
+          git diff --cached --quiet || git commit -m "Advance daily Thirukkural publishing state"
+          git push
